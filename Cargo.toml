@@ -2,6 +2,7 @@
 name = "rust-gfx-examples"
 version = "0.1.0"
 authors = ["David Tulig <david.tulig@gmail.com>"]
+license = "MIT"
 
 [dependencies]
 gfx = "*"
