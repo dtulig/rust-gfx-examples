@@ -1,0 +1,27 @@
+[package]
+name = "rust-gfx-examples"
+version = "0.1.0"
+authors = ["David Tulig <david.tulig@gmail.com>"]
+
+[dependencies]
+gfx = "*"
+glutin = "*"
+gfx_window_glutin = "*"
+time = "0.1.*"
+cgmath = "0.11.*"
+
+[[example]]
+name = "tutorial01"
+path = "examples/tutorial01/main.rs"
+
+[[example]]
+name = "tutorial02"
+path = "examples/tutorial02/main.rs"
+
+[[example]]
+name = "tutorial03"
+path = "examples/tutorial03/main.rs"
+
+[[example]]
+name = "tutorial04"
+path = "examples/tutorial04/main.rs"
