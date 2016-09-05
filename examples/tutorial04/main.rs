@@ -5,8 +5,7 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
 
-use cgmath::prelude::*;
-use cgmath::{Vector3, Matrix4, vec3, Deg, Rad};
+use cgmath::{Matrix4, vec3, Deg, Rad};
 use gfx::traits::FactoryExt;
 use gfx::Device;
 use time::precise_time_s;
