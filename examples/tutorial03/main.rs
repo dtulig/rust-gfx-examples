@@ -51,8 +51,8 @@ fn main() {
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
 
     let mut data = pipe::Data {
-        vbuf: vertex_buffer.clone(),
-        out: main_color.clone(),
+        vbuf: vertex_buffer,
+        out: main_color,
         fade: 0.0,
     };
 
