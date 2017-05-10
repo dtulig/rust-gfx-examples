@@ -51,8 +51,9 @@ fn main() {
         .with_title("My First Triangle".to_string())
         .with_dimensions(width, height);
 
+    let events_loop = glutin::EventsLoop::new();
     let (window, mut device, mut factory, main_color, main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder);
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
 
     // Despite requesting 640x480, verify the height and width.
     let result = window.get_inner_size_pixels().unwrap();
@@ -97,19 +98,20 @@ fn main() {
         mvp: Matrix4::from_scale(1.0).into(),
     };
 
-    'main: loop {
-        for ev in window.poll_events() {
-            match ev {
-                glutin::Event::Resized(w, h) => {
+    let mut running = true;
+    while running {
+        events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
+            match event {
+                glutin::WindowEvent::Resized(w, h) => {
                     width = w;
                     height = h;
                     gfx_window_glutin::update_views(&window, &mut data.out, &mut data.out_depth);
                 }
-                glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                glutin::Event::Closed => break 'main,
+                glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
+                glutin::WindowEvent::Closed => running = false,
                 _ => ()
             }
-        }
+        });
 
         let model = Matrix4::from_translation(vec3(0.0, 0.0, -4.0));
         let view = Matrix4::look_at(Point3::new(0.0, 2.0, 0.0), Point3::new(0.0, 0.0, -4.0), vec3(0.0, 1.0, 0.0));

@@ -33,8 +33,9 @@ fn main() {
         .with_title("My First Triangle".to_string())
         .with_dimensions(640, 480);
 
+    let events_loop = glutin::EventsLoop::new();
     let (window, mut device, mut factory, main_color, _main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder);
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
 
     let mut encoder: gfx::Encoder<_,_> = factory.create_command_buffer().into();
 
@@ -51,14 +52,15 @@ fn main() {
         out: main_color,
     };
 
-    'main: loop {
-        for ev in window.poll_events() {
-            match ev {
-                glutin::Event::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape)) |
-                glutin::Event::Closed => break 'main,
+    let mut running = true;
+    while running {
+        events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
+            match event {
+                glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
+                glutin::WindowEvent::Closed => running = false,
                 _ => ()
             }
-        }
+        });
 
         encoder.clear(&data.out, CLEAR_COLOR);
         encoder.draw(&slice, &pso, &data);

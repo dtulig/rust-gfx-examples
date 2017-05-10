@@ -9,7 +9,12 @@ gfx = "*"
 glutin = "*"
 gfx_window_glutin = "*"
 time = "0.1.*"
-cgmath = "0.11.*"
+cgmath = "0.14.*"
+
+[dependencies.image]
+version = "*"
+default-features = false
+features = ["png_codec"]
 
 [[example]]
 name = "tutorial01"

@@ -2,7 +2,7 @@ with import <nixpkgs> {}; {
   rustGameDevEnv = stdenv.mkDerivation {
     name = "rust-game-dev-env";
     buildInputs = [
-      rustc
+      rustNightly.rustc
       cargo
 
       stdenv
