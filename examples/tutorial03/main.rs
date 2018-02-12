@@ -4,8 +4,9 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
 
-use gfx::traits::FactoryExt;
 use gfx::Device;
+use gfx::traits::FactoryExt;
+use glutin::GlContext;
 use time::precise_time_s;
 
 pub type ColorFormat = gfx::format::Rgba8;
@@ -21,7 +22,7 @@ gfx_defines!{
 
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
-        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::ColorMask::all(), gfx::preset::blend::ALPHA),
         fade: gfx::Global<f32> = "fade",
     }
 }
@@ -37,37 +38,50 @@ fn main() {
         .with_title("My First Triangle".to_string())
         .with_dimensions(640, 480);
 
-    let events_loop = glutin::EventsLoop::new();
+    let gl_builder = glutin::ContextBuilder::new().with_vsync(true);
+    let mut events_loop = glutin::EventsLoop::new();
     let (window, mut device, mut factory, main_color, _main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, gl_builder, &events_loop);
 
-    let mut encoder: gfx::Encoder<_,_> = factory.create_command_buffer().into();
+    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let pso = factory.create_pipeline_simple(
-        include_bytes!("triangle_120.glslv"),
-        include_bytes!("triangle_120.glslf"),
-        pipe::new()
-    ).unwrap();
+    let pso = factory
+        .create_pipeline_simple(
+            include_bytes!("triangle_120.glslv"),
+            include_bytes!("triangle_120.glslf"),
+            pipe::new(),
+        )
+        .unwrap();
 
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
 
     let mut data = pipe::Data {
         vbuf: vertex_buffer,
-        out: main_color,
+        out:  main_color,
         fade: 0.0,
     };
 
     let mut running = true;
     while running {
-        events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
-            match event {
-                glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
-                glutin::WindowEvent::Closed => running = false,
-                _ => ()
+        // fetch events
+        events_loop.poll_events(|event| {
+            if let glutin::Event::WindowEvent { event, .. } = event {
+                match event {
+                    glutin::WindowEvent::Closed => running = false,
+                    glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glutin::KeyboardInput {
+                                virtual_keycode: Some(glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => return,
+
+                    _ => (),
+                }
             }
         });
-
-        let fade_pct = (precise_time_s() * (2.0*3.14) / 5.0).sin() / 2.0 + 0.5;
+        let fade_pct = (precise_time_s() * (2.0 * 3.14) / 5.0).sin() / 2.0 + 0.5;
 
         data.fade = fade_pct as f32;
 

@@ -5,9 +5,10 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
 
-use cgmath::{Matrix4, vec3, Point3, Deg, Rad, perspective};
-use gfx::traits::FactoryExt;
+use cgmath::{perspective, Deg, Matrix4, Point3, Rad, vec3};
 use gfx::Device;
+use gfx::traits::FactoryExt;
+use glutin::GlContext;
 use time::precise_time_s;
 
 pub type ColorFormat = gfx::format::Rgba8;
@@ -23,7 +24,7 @@ gfx_defines!{
 
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
-        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::ColorMask::all(), gfx::preset::blend::ALPHA),
         out_depth: gfx::DepthTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
         mvp: gfx::Global<[[f32; 4]; 4]> = "mvp",
     }
@@ -47,26 +48,29 @@ fn main() {
     let mut width = 640;
     let mut height = 480;
 
+    let gl_builder = glutin::ContextBuilder::new().with_vsync(true);
     let builder = glutin::WindowBuilder::new()
         .with_title("My First Triangle".to_string())
         .with_dimensions(width, height);
 
-    let events_loop = glutin::EventsLoop::new();
+    let mut events_loop = glutin::EventsLoop::new();
     let (window, mut device, mut factory, main_color, main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, gl_builder, &events_loop);
 
     // Despite requesting 640x480, verify the height and width.
     let result = window.get_inner_size_pixels().unwrap();
     width = result.0;
     height = result.1;
 
-    let mut encoder: gfx::Encoder<_,_> = factory.create_command_buffer().into();
+    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let pso = factory.create_pipeline_simple(
-        include_bytes!("triangle_120.glslv"),
-        include_bytes!("triangle_120.glslf"),
-        pipe::new()
-    ).unwrap();
+    let pso = factory
+        .create_pipeline_simple(
+            include_bytes!("triangle_120.glslv"),
+            include_bytes!("triangle_120.glslf"),
+            pipe::new(),
+        )
+        .unwrap();
 
     let cube_elements: &[u16] = &[
         // front
@@ -92,30 +96,42 @@ fn main() {
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&CUBE, cube_elements);
 
     let mut data = pipe::Data {
-        vbuf: vertex_buffer,
-        out: main_color,
+        vbuf:      vertex_buffer,
+        out:       main_color,
         out_depth: main_depth,
-        mvp: Matrix4::from_scale(1.0).into(),
+        mvp:       Matrix4::from_scale(1.0).into(),
     };
 
     let mut running = true;
     while running {
-        events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
-            match event {
-                glutin::WindowEvent::Resized(w, h) => {
-                    width = w;
-                    height = h;
-                    gfx_window_glutin::update_views(&window, &mut data.out, &mut data.out_depth);
+        // fetch events
+        events_loop.poll_events(|event| {
+            if let glutin::Event::WindowEvent { event, .. } = event {
+                match event {
+                    glutin::WindowEvent::Closed => running = false,
+                    glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glutin::KeyboardInput {
+                                virtual_keycode: Some(glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => return,
+                    glutin::WindowEvent::Resized(_width, _height) => {
+                        // TODO
+                    }
+                    _ => (),
                 }
-                glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
-                glutin::WindowEvent::Closed => running = false,
-                _ => ()
             }
         });
 
         let model = Matrix4::from_translation(vec3(0.0, 0.0, -4.0));
-        let view = Matrix4::look_at(Point3::new(0.0, 2.0, 0.0), Point3::new(0.0, 0.0, -4.0), vec3(0.0, 1.0, 0.0));
-        let projection = perspective(Deg(45.0), 1.0 * (width as f32)/(height as f32), 0.1, 10.0);
+        let view = Matrix4::look_at(
+            Point3::new(0.0, 2.0, 0.0),
+            Point3::new(0.0, 0.0, -4.0),
+            vec3(0.0, 1.0, 0.0),
+        );
+        let projection = perspective(Deg(45.0), 1.0 * (width as f32) / (height as f32), 0.1, 10.0);
 
         let angle = precise_time_s() * 45.0; // 45 degrees per second
         let anim = Matrix4::from_angle_y(Rad::from(Deg(angle as f32)));
