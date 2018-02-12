@@ -5,9 +5,10 @@ extern crate gfx_window_glutin;
 extern crate glutin;
 extern crate time;
 
-use cgmath::{Matrix4, vec3, Deg, Rad};
-use gfx::traits::FactoryExt;
+use cgmath::{Deg, Matrix4, Rad, vec3};
 use gfx::Device;
+use gfx::traits::FactoryExt;
+use glutin::GlContext;
 use time::precise_time_s;
 
 pub type ColorFormat = gfx::format::Rgba8;
@@ -15,7 +16,7 @@ pub type DepthFormat = gfx::format::DepthStencil;
 
 const CLEAR_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
-gfx_defines!{
+gfx_defines! {
     vertex Vertex {
         pos: [f32; 3] = "coord3d",
         color: [f32; 3] = "v_color",
@@ -23,7 +24,7 @@ gfx_defines!{
 
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
-        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::MASK_ALL, gfx::preset::blend::ALPHA),
+        out: gfx::BlendTarget<ColorFormat> = ("Target0", gfx::state::ColorMask::all(), gfx::preset::blend::ALPHA),
         m_transform: gfx::Global<[[f32; 4]; 4]> = "m_transform",
     }
 }
@@ -38,38 +39,53 @@ fn main() {
     let builder = glutin::WindowBuilder::new()
         .with_title("My First Triangle".to_string())
         .with_dimensions(640, 480);
-
-    let events_loop = glutin::EventsLoop::new();
+    let gl_builder = glutin::ContextBuilder::new().with_vsync(true);
+    let mut events_loop = glutin::EventsLoop::new();
     let (window, mut device, mut factory, main_color, _main_depth) =
-        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
+        gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, gl_builder, &events_loop);
 
-    let mut encoder: gfx::Encoder<_,_> = factory.create_command_buffer().into();
+    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
-    let pso = factory.create_pipeline_simple(
-        include_bytes!("triangle_120.glslv"),
-        include_bytes!("triangle_120.glslf"),
-        pipe::new()
-    ).unwrap();
+    let pso = factory
+        .create_pipeline_simple(
+            include_bytes!("triangle_120.glslv"),
+            include_bytes!("triangle_120.glslf"),
+            pipe::new(),
+        )
+        .unwrap();
 
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
 
     let mut data = pipe::Data {
-        vbuf: vertex_buffer,
-        out: main_color,
+        vbuf:        vertex_buffer,
+        out:         main_color,
         m_transform: Matrix4::from_scale(1.0).into(),
     };
 
     let mut running = true;
     while running {
-        events_loop.poll_events(|glutin::Event::WindowEvent{window_id: _, event}| {
-            match event {
-                glutin::WindowEvent::KeyboardInput(_, _, Some(glutin::VirtualKeyCode::Escape), _) |
-                glutin::WindowEvent::Closed => running = false,
-                _ => ()
+        // fetch events
+        events_loop.poll_events(|event| {
+            if let glutin::Event::WindowEvent { event, .. } = event {
+                match event {
+                    glutin::WindowEvent::Closed => running = false,
+                    glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glutin::KeyboardInput {
+                                virtual_keycode: Some(glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => return,
+                    glutin::WindowEvent::Resized(_width, _height) => {
+                        // TODO
+                    }
+                    _ => (),
+                }
             }
         });
 
-        let tmove = (precise_time_s() * (2.0*3.14) / 5.0).sin(); // -1 <-> +1 every 5 seconds
+        let tmove = (precise_time_s() * (2.0 * 3.14) / 5.0).sin(); // -1 <-> +1 every 5 seconds
         let angle = precise_time_s() * 45.0; // 45 degrees per second
 
         let m_rotate: Matrix4<f32> = Matrix4::from_angle_z(Rad::from(Deg(angle as f32)));
