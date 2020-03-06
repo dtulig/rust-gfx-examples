@@ -5,14 +5,14 @@ authors = ["David Tulig <david.tulig@gmail.com>"]
 license = "MIT"
 
 [dependencies]
-gfx = "*"
-glutin = "*"
-gfx_window_glutin = "*"
-time = "0.1.*"
-cgmath = "0.14.*"
+gfx = "0.17"
+glutin = "0.12"
+gfx_window_glutin = "0.20"
+time = "0.1"
+cgmath = "0.14"
 
 [dependencies.image]
-version = "*"
+version = "0.22"
 default-features = false
 features = ["png_codec"]
 
